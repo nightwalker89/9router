@@ -46,9 +46,9 @@ export const getModelKind = (m, fallback = null) => m?.kind || m?.type || fallba
 // Reasoning is not overridable: it travels with thinkingFormat (an enum) and
 // forcing it alone would emit a thinking config the model cannot parse.
 export const CAPACITY_META = {
-  vision: { icon: "visibility", label: "Vision", desc: "Supports image input", color: "text-blue-500", overridable: true },
+  vision: { icon: "visibility", offIcon: "visibility_off", label: "Vision", desc: "Supports image input", color: "text-blue-500", overridable: true },
   pdf: { icon: "picture_as_pdf", label: "Documents", desc: "Supports PDF / document input", color: "text-rose-500", overridable: true },
-  audioInput: { icon: "graphic_eq", label: "Audio", desc: "Supports audio input", color: "text-violet-500", overridable: true },
+  audioInput: { icon: "graphic_eq", offIcon: "volume_off", label: "Audio", desc: "Supports audio input", color: "text-violet-500", overridable: true },
   // search: temporarily hidden (feature not wired yet)
   reasoning: { icon: "neurology", label: "Reasoning", desc: "Supports reasoning / thinking", color: "text-amber-500" },
 };

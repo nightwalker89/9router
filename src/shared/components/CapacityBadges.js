@@ -50,17 +50,25 @@ export default function CapacityBadges({
           ? `${meta.label} — ${meta.desc}\n${on ? "On" : "Off"} (${state}). Click to change.`
           : `${meta.label} — ${meta.desc}`;
 
-        // Dimmed when off; ringed when the user pinned it, so an inherited value
-        // and a deliberate one are not mistaken for each other.
-        const color = on ? (colorOverride || meta.color) : "text-text-muted/30";
-        const ring = forced !== undefined ? "ring-1 ring-primary/50 rounded-sm" : "";
+        // Four states have to be told apart at 12px, so they do not rely on one
+        // signal alone. A pinned capability ignores colorOverride and wears its
+        // own colour, because "I set this" is exactly what should stand out
+        // against a row the override is there to keep calm:
+        //   inherited off -> faint, no ring      pinned off -> faint + ring (+ slashed icon)
+        //   inherited on  -> muted, no ring      pinned on  -> full colour + ring
+        const pinned = forced !== undefined;
+        const color = on
+          ? (pinned ? meta.color : (colorOverride || meta.color))
+          : "text-text-muted/30";
+        const ring = pinned ? "ring-1 ring-primary/50 rounded-sm" : "";
+        const glyph = (!on && pinned && meta.offIcon) ? meta.offIcon : meta.icon;
 
         const icon = (
           <span
             className={`material-symbols-outlined leading-none ${canEdit ? "cursor-pointer hover:opacity-70" : "cursor-help"} ${color} ${ring}`}
             style={{ fontSize: `${size}px` }}
           >
-            {meta.icon}
+            {glyph}
           </span>
         );
 
