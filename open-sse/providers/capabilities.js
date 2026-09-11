@@ -391,14 +391,19 @@ const MODALITY_KEYS = ["vision", "pdf", "audioInput", "videoInput"];
 
 // Catalog lookups, installed by the server at startup. Left as no-ops in the
 // browser bundle, where there is no file to read.
-let catalogSource = null;
+//
+// On globalThis for the same reason as the override source below: Next.js gives
+// the instrumentation hook and the request handlers separate bundles, so a
+// module variable set at startup is invisible to the copy of this file that
+// serves requests.
+const CATALOG_SOURCE = Symbol.for("n9router.capabilityCatalogSource");
 
 /**
  * Install the synced catalog reader (server only).
  * @param {{ getModalities: Function, getLimits: Function } | null} source
  */
 export function setCatalogSource(source) {
-  catalogSource = source;
+  globalThis[CATALOG_SOURCE] = source;
 }
 
 // Manual dashboard overrides, installed by the server the same way and for the
@@ -426,6 +431,7 @@ export function setOverrideSource(source) {
 function refine(base, provider, model) {
   const result = { ...DEFAULT_CAPABILITIES, ...base };
 
+  const catalogSource = globalThis[CATALOG_SOURCE];
   if (catalogSource) {
     const modalities = catalogSource.getModalities(model);
     if (modalities) {
