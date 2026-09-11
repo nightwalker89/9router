@@ -563,14 +563,28 @@ export async function getCustomModels() {
   return db.data.customModels || [];
 }
 
-export async function addCustomModel({ providerAlias, id, type = "llm", name }) {
+export async function addCustomModel({ providerAlias, id, type = "llm", name, caps }) {
   const db = await getDb();
   if (!db.data.customModels) db.data.customModels = [];
-  const exists = db.data.customModels.some(
+  const existingIndex = db.data.customModels.findIndex(
     (m) => m.providerAlias === providerAlias && m.id === id && (m.type || "llm") === type
   );
-  if (exists) return false;
-  db.data.customModels.push({ providerAlias, id, type, name: name || id });
+  const entry = {
+    providerAlias,
+    id,
+    type,
+    name: name || id,
+    ...(caps ? { caps } : {}),
+  };
+  if (existingIndex >= 0) {
+    db.data.customModels[existingIndex] = {
+      ...db.data.customModels[existingIndex],
+      ...entry,
+    };
+    await safeWrite(db);
+    return true;
+  }
+  db.data.customModels.push(entry);
   await safeWrite(db);
   return true;
 }

@@ -4,10 +4,12 @@ import { getDisabledModels } from "@/lib/disabledModelsDb";
 import { AI_MODELS } from "@/shared/constants/config";
 import { getProviderAlias } from "@/shared/constants/providers";
 import { getCapabilitiesForModel } from "open-sse/providers/capabilities.js";
+import { installCatalogSource } from "open-sse/providers/catalogOverride.js";
 
 // GET /api/models - Get models with aliases
 export async function GET() {
   try {
+    await installCatalogSource().catch(() => {});
     const modelAliases = await getModelAliases();
     const disabled = await getDisabledModels();
 

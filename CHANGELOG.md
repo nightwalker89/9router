@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.4.59 (2026-09-11)
+
+### Features & Improvements
+- **Custom Models Capability Persistence**: Fixed `addCustomModel()` in `src/lib/localDb.js` to persist capability flags (`caps`) in DB and allow updating existing custom models, ensuring manual toggles (like Vision and Reasoning) are preserved.
+- **DeepSeek V4.1 Vision Support**: Added native pattern matching for `deepseek-v4.1` with multimodal vision and reasoning capabilities in `open-sse/providers/capabilities.js`.
+- **Dynamic Model Catalog Sync Across Webpack Bundles**: Stored `catalogSource` on `globalThis.__9r_catalogSource` so that Next.js API route handlers (`/api/models`, `/v1/models`) share the dynamically synced `models.dev` catalog with `instrumentation.js`.
+- **AgentKit Integration**: Added AgentKit promo component to sidebar and updated documentation.
+
 ## v0.4.58 (2026-09-05)
 
 ### Upstream merge

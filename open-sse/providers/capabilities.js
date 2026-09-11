@@ -321,6 +321,7 @@ export const PATTERN_CAPABILITIES = [
   // Vision variant must precede the plain family pattern below, or "*deepseek-v4*"
   // swallows it and the model resolves to vision:false (media stripped upstream).
   { pattern: "*deepseek-v4*vision*", caps: { vision: true, reasoning: true, thinkingFormat: "deepseek", contextWindow: 1000000, maxOutput: 384000 } },
+  { pattern: "*deepseek-v4.1*", caps: { vision: true, reasoning: true, thinkingFormat: "deepseek", contextWindow: 1000000, maxOutput: 384000 } },
   { pattern: "*deepseek-v4*",   caps: { reasoning: true, thinkingFormat: "deepseek", contextWindow: 1000000, maxOutput: 384000 } },
   { pattern: "*reasoner*",      caps: { reasoning: true, thinkingFormat: "deepseek", thinkingCanDisable: false, contextWindow: 128000 } },
   { pattern: "*deepseek-r*",    caps: { reasoning: true, thinkingFormat: "deepseek", thinkingCanDisable: false, contextWindow: 128000 } },
@@ -386,14 +387,22 @@ const MODALITY_KEYS = ["vision", "pdf", "audioInput", "videoInput"];
 
 // Catalog lookups, installed by the server at startup. Left as no-ops in the
 // browser bundle, where there is no file to read.
-let catalogSource = null;
+// Stored on globalThis so isolated Next.js Webpack chunks (instrumentation vs API routes)
+// share the same catalog source instance.
+const GLOBAL_CATALOG_KEY = "__9r_catalogSource";
 
 /**
  * Install the synced catalog reader (server only).
  * @param {{ getModalities: Function, getLimits: Function } | null} source
  */
 export function setCatalogSource(source) {
-  catalogSource = source;
+  if (typeof globalThis !== "undefined") {
+    globalThis[GLOBAL_CATALOG_KEY] = source;
+  }
+}
+
+function getCatalogSource() {
+  return (typeof globalThis !== "undefined" && globalThis[GLOBAL_CATALOG_KEY]) || null;
 }
 
 // Apply the synced catalog + name heuristic on top of a table-resolved result.
@@ -402,15 +411,16 @@ export function setCatalogSource(source) {
 function refine(base, provider, model) {
   const result = { ...DEFAULT_CAPABILITIES, ...base };
 
-  if (catalogSource) {
-    const modalities = catalogSource.getModalities(model);
+  const catalog = getCatalogSource();
+  if (catalog) {
+    const modalities = catalog.getModalities(model);
     if (modalities) {
       for (const key of MODALITY_KEYS) {
         if (modalities[key] === true) result[key] = true;
       }
     }
 
-    const limits = catalogSource.getLimits(provider, model);
+    const limits = catalog.getLimits(provider, model);
     if (limits) {
       if (limits.contextWindow > 0) result.contextWindow = limits.contextWindow;
       if (limits.maxOutput > 0) result.maxOutput = limits.maxOutput;

@@ -62,4 +62,16 @@ describe("getCapabilitiesForModel", () => {
     expect(getCapabilitiesForModel("kiro", "gpt-5.6-luna-agentic")).toMatchObject(kiroGpt56Expected);
     expect(getCapabilitiesForModel("kiro", "gpt-5.6-sol-thinking-agentic")).toMatchObject(kiroGpt56Expected);
   });
+
+  it("reports DeepSeek V4.1 models as vision-capable reasoning models", () => {
+    for (const model of [
+      "deepseek-v4.1-flash",
+      "deepseek/deepseek-v4.1-flash",
+    ]) {
+      const caps = getCapabilitiesForModel("cmc", model);
+      expect(caps.vision).toBe(true);
+      expect(caps.reasoning).toBe(true);
+      expect(caps.thinkingFormat).toBe("deepseek");
+    }
+  });
 });
