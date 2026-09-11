@@ -8,6 +8,9 @@ export async function register() {
     const { installCatalogSource } = await import("open-sse/providers/catalogOverride.js");
     await installCatalogSource();
 
+    const { installOverrideSource } = await import("open-sse/providers/capabilityOverrides.js");
+    await installOverrideSource();
+
     const { startModelCatalogSync } = await import("@/lib/modelCatalog/sync.js");
     startModelCatalogSync();
   }

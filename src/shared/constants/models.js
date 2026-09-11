@@ -40,8 +40,18 @@ export const AI_MODELS = Object.entries(MODELS).flatMap(([alias, models]) =>
 export const getModelKind = (m, fallback = null) => m?.kind || m?.type || fallback;
 
 // Capacity metadata for UI badges — icon + label + color per capability.
+// `overridable` marks the input modalities a user may force on or off per model.
+// They are plain booleans that only decide whether media is stripped from a
+// request, so a wrong value costs an image rather than breaking the call.
+// Reasoning is not overridable: it travels with thinkingFormat (an enum) and
+// forcing it alone would emit a thinking config the model cannot parse.
 export const CAPACITY_META = {
-  vision: { icon: "visibility", label: "Vision", desc: "Supports image input", color: "text-blue-500" },
+  vision: { icon: "visibility", label: "Vision", desc: "Supports image input", color: "text-blue-500", overridable: true },
+  pdf: { icon: "picture_as_pdf", label: "Documents", desc: "Supports PDF / document input", color: "text-rose-500", overridable: true },
+  audioInput: { icon: "graphic_eq", label: "Audio", desc: "Supports audio input", color: "text-violet-500", overridable: true },
   // search: temporarily hidden (feature not wired yet)
   reasoning: { icon: "neurology", label: "Reasoning", desc: "Supports reasoning / thinking", color: "text-amber-500" },
 };
+
+// Single source of truth for both the dashboard and the server-side override store.
+export const OVERRIDABLE_CAPABILITIES = Object.keys(CAPACITY_META).filter((k) => CAPACITY_META[k].overridable);

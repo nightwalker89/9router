@@ -3,9 +3,11 @@
 import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { Button, Modal, Toggle } from "@/shared/components";
-import { CAPACITY_META } from "@/shared/constants/models";
+import { CAPACITY_META, OVERRIDABLE_CAPABILITIES } from "@/shared/constants/models";
 
-const defaultCaps = () => Object.fromEntries(Object.keys(CAPACITY_META).map((key) => [key, false]));
+// Only the input modalities can be forced; the rest are decided by the capability
+// tables and the synced catalog.
+const defaultCaps = () => Object.fromEntries(OVERRIDABLE_CAPABILITIES.map((key) => [key, false]));
 
 export default function AddCustomModelModal({ isOpen, providerAlias, providerDisplayAlias, onSave, onClose }) {
   const [modelId, setModelId] = useState("");
@@ -93,13 +95,13 @@ export default function AddCustomModelModal({ isOpen, providerAlias, providerDis
         <div>
           <label className="text-sm font-medium mb-1.5 block">Capabilities</label>
           <div className="flex flex-wrap gap-4">
-            {Object.entries(CAPACITY_META).map(([key, meta]) => (
+            {OVERRIDABLE_CAPABILITIES.map((key) => (
               <Toggle
                 key={key}
                 checked={!!caps[key]}
                 onChange={(v) => setCaps((prev) => ({ ...prev, [key]: v }))}
-                label={meta.label}
-                description={meta.desc}
+                label={CAPACITY_META[key].label}
+                description={CAPACITY_META[key].desc}
                 size="sm"
               />
             ))}

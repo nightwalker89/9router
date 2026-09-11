@@ -1,17 +1,16 @@
 import { NextResponse } from "next/server";
 import { getCustomModels, addCustomModel, deleteCustomModel } from "@/models";
-import { CAPACITY_META } from "@/shared/constants/models";
+import { OVERRIDABLE_CAPABILITIES } from "@/shared/constants/models";
+import { setCapabilityOverride, clearCapabilityOverridesFor } from "@/lib/capabilityOverridesDb";
 
 export const dynamic = "force-dynamic";
 
-// Whitelist capability keys to boolean values — ignore anything else
-function sanitizeCaps(caps) {
-  if (!caps || typeof caps !== "object") return null;
-  const clean = {};
-  for (const key of Object.keys(CAPACITY_META)) {
-    if (typeof caps[key] === "boolean") clean[key] = caps[key];
-  }
-  return Object.keys(clean).length ? clean : null;
+// Capabilities ticked in the "Add model" dialog. Only `true` is meaningful here:
+// an unticked box means "let the capability tables decide", not "force off", so
+// persisting false would wrongly blind a model that really does read images.
+function enabledCaps(caps) {
+  if (!caps || typeof caps !== "object") return [];
+  return OVERRIDABLE_CAPABILITIES.filter((key) => caps[key] === true);
 }
 
 // GET /api/models/custom - List all custom models
@@ -32,8 +31,13 @@ export async function POST(request) {
     if (!providerAlias || !id) {
       return NextResponse.json({ error: "providerAlias and id required" }, { status: 400 });
     }
-    const cleanCaps = sanitizeCaps(caps);
-    const added = await addCustomModel({ providerAlias, id, type: type || "llm", name, ...(cleanCaps ? { caps: cleanCaps } : {}) });
+    const added = await addCustomModel({ providerAlias, id, type: type || "llm", name });
+    // Capabilities live in the override store, not on the model record: they must
+    // reach getCapabilitiesForModel on the request path, and the same mechanism
+    // has to work for built-in models that were never added by hand.
+    for (const capability of enabledCaps(caps)) {
+      await setCapabilityOverride(providerAlias, id, capability, true);
+    }
     return NextResponse.json({ success: true, added });
   } catch (error) {
     console.log("Error adding custom model:", error);
@@ -52,6 +56,8 @@ export async function DELETE(request) {
       return NextResponse.json({ error: "providerAlias and id required" }, { status: 400 });
     }
     await deleteCustomModel({ providerAlias, id, type });
+    // Don't leave the override behind to silently reattach if the model is re-added.
+    await clearCapabilityOverridesFor(providerAlias, id);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.log("Error deleting custom model:", error);

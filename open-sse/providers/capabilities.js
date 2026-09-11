@@ -16,6 +16,11 @@
 //     nobody has catalogued yet still accepts images.
 // Both only ever turn a capability ON.
 //
+// Finally, a manual per-model override set in the dashboard is applied over the
+// whole result. It is the only layer that can turn a capability OFF, and the only
+// one that beats steps 1-2, because it is the user stating what their own account
+// actually gets from a model the tables and the catalog have wrong.
+//
 // ── HOW TO ADD / UPDATE A MODEL ──────────────────────────────────────
 // Authoritative data source: https://models.dev/api.json (145 providers, 4000+
 // models, MIT). Each model exposes the exact fields we map below:
@@ -396,6 +401,25 @@ export function setCatalogSource(source) {
   catalogSource = source;
 }
 
+// Manual dashboard overrides, installed by the server the same way and for the
+// same reason (the reader touches node:fs; this module is bundled for the browser).
+//
+// Parked on globalThis rather than in a module variable: Next.js gives the
+// instrumentation hook and the request handlers separate bundles, so a module
+// variable set at startup is invisible to the copy of this file that actually
+// serves requests — the override would show up in the dashboard and do nothing
+// to routing. A Symbol.for key is shared by every bundle in the process, and in
+// the browser it is simply undefined, so this stays a no-op there.
+const OVERRIDE_SOURCE = Symbol.for("n9router.capabilityOverrideSource");
+
+/**
+ * Install the manual capability override reader (server only).
+ * @param {{ getOverride: Function } | null} source
+ */
+export function setOverrideSource(source) {
+  globalThis[OVERRIDE_SOURCE] = source;
+}
+
 // Apply the synced catalog + name heuristic on top of a table-resolved result.
 // Strictly additive: a capability already true stays true, and a false one only
 // flips when an outside source positively declares support.
@@ -422,9 +446,8 @@ function refine(base, provider, model) {
   return result;
 }
 
-export function getCapabilitiesForModel(provider, model) {
-  if (!model) return { ...DEFAULT_CAPABILITIES };
-
+// The table/catalog/heuristic chain, before any manual override is applied.
+function resolveCapabilities(provider, model) {
   // Canonical exact lookup strips vendor prefix: "anthropic/claude-opus-4.7" -> "claude-opus-4.7".
   const baseModel = model.includes("/") ? model.split("/").pop() : model;
 
@@ -448,4 +471,14 @@ export function getCapabilitiesForModel(provider, model) {
 
   // 4. Floor
   return refine(null, provider, model);
+}
+
+export function getCapabilitiesForModel(provider, model) {
+  if (!model) return { ...DEFAULT_CAPABILITIES };
+
+  const resolved = resolveCapabilities(provider, model);
+  const override = globalThis[OVERRIDE_SOURCE]?.getOverride(provider, model);
+  // Spread over the result rather than replacing it: only the toggled flags
+  // change, so contextWindow / maxOutput / thinkingFormat survive untouched.
+  return override ? { ...resolved, ...override } : resolved;
 }

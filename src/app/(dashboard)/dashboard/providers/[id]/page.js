@@ -56,6 +56,8 @@ export default function ProviderDetailPage() {
   const [selectedConnection, setSelectedConnection] = useState(null);
   const [modelAliases, setModelAliases] = useState({});
   const [customModels, setCustomModels] = useState([]);
+  const [capOverrides, setCapOverrides] = useState({});
+  const [overridableCaps, setOverridableCaps] = useState([]);
   const [headerImgError, setHeaderImgError] = useState(false);
   const [modelTestResults, setModelTestResults] = useState({});
   const [modelsTestError, setModelsTestError] = useState("");
@@ -283,6 +285,41 @@ export default function ProviderDetailPage() {
     }
   }, []);
 
+  const fetchCapOverrides = useCallback(async () => {
+    try {
+      const res = await fetch("/api/models/capabilities", { cache: "no-store" });
+      const data = await res.json();
+      if (res.ok) {
+        setCapOverrides(data.overrides || {});
+        setOverridableCaps(data.overridable || []);
+      }
+    } catch (error) {
+      console.log("Error fetching capability overrides:", error);
+    }
+  }, []);
+
+  // Cycle one capability auto -> on -> off -> auto for a single model.
+  // Keyed by provider id (not the storage alias) so the key matches what the
+  // router passes to getCapabilitiesForModel on the request path.
+  const handleToggleCap = useCallback(async (modelId, capability, value) => {
+    try {
+      const res = await fetch("/api/models/capabilities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: providerId, modelId, capability, value: value ?? null }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setCapOverrides(data.overrides || {});
+        // useModelCaps holds a module-level cache that never invalidates on its
+        // own, so without this the badge would keep showing the stale value.
+        window.dispatchEvent(new CustomEvent("modelCapsChanged"));
+      }
+    } catch (error) {
+      console.log("Error saving capability override:", error);
+    }
+  }, [providerId]);
+
   // Fetch free models from Kilo API for kilocode provider
   useEffect(() => {
     if (providerId !== "kilocode") return;
@@ -458,7 +495,8 @@ export default function ProviderDetailPage() {
     fetchAliases();
     fetchCustomModels();
     fetchDisabledModels();
-  }, [fetchConnections, fetchAliases, fetchCustomModels, fetchDisabledModels]);
+    fetchCapOverrides();
+  }, [fetchConnections, fetchAliases, fetchCustomModels, fetchDisabledModels, fetchCapOverrides]);
 
   // Cursor's model availability is account-specific and changes frequently.
   // Load the active account's live catalog for the dashboard; the static
@@ -1133,6 +1171,9 @@ export default function ProviderDetailPage() {
             isCustom
             isFree={false}
             caps={getCaps(`${providerId}/${model.id}`)}
+            capOverrides={capOverrides[`${providerId}/${model.id}`]}
+            overridableCaps={overridableCaps}
+            onToggleCap={(cap, value) => handleToggleCap(model.id, cap, value)}
             thinkingSuffix={resolveThinkingSuffix(model.id)}
           />
         ))}
@@ -1159,6 +1200,9 @@ export default function ProviderDetailPage() {
               isFree={model.isFree}
               onDisable={() => handleDisableModel(model.id)}
               caps={getCaps(`${providerId}/${model.id}`)}
+              capOverrides={capOverrides[`${providerId}/${model.id}`]}
+              overridableCaps={overridableCaps}
+              onToggleCap={(cap, value) => handleToggleCap(model.id, cap, value)}
               thinkingSuffix={resolveThinkingSuffix(model.id)}
             />
           );
